@@ -1,0 +1,81 @@
+stages:
+  - validate
+  - tag
+  - package
+  - upload
+
+variables:
+  TERRAFORM_MODULE_SYSTEM: ${TERRAFORM_MODULE_SYSTEM:-aws}
+  TERRAFORM_MODULE_VERSION: ${CI_COMMIT_TAG}
+
+default:
+  before_script:
+    - apk add --no-cache openssh git curl tar
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
+    - ssh-keyscan -t ed25519 $CI_SERVER_HOST >> ~/.ssh/known_hosts
+    - git config --global user.email "ci@example.com"
+    - git config --global user.name "GitLab CI"
+    - git remote set-url origin git@$CI_SERVER_HOST:$CI_PROJECT_PATH.git
+
+validate:
+  stage: validate
+  image: hashicorp/terraform:light
+  script:
+    - terraform -chdir=modules/ init && terraform -chdir=modules/terraform-ecs-restart-lambda validate
+  only:
+    - dev
+
+tag_and_upload:
+  stage: tag
+  script:
+    - VERSION=$(cat VERSION)
+    - TAG="v${VERSION}"
+    - echo "Creating and pushing tag $TAG"
+    - git fetch origin
+    - git tag -a "$TAG" -m "Release $TAG" || echo "Tag $TAG already exists"
+    - git push origin "$TAG"
+  only:
+    - dev
+
+package_modules:
+  stage: package
+  script:
+    - mkdir -p dist
+    - for module in terraform-ecs-restart-lambda; do \
+        tar -czf dist/terraform-${TERRAFORM_MODULE_SYSTEM}-${module}-${TERRAFORM_MODULE_VERSION}.tgz -C modules/${module} .; \
+      done
+  artifacts:
+    paths:
+      - dist/
+  only:
+    - tags
+
+upload_modules:
+  stage: upload
+  image: curlimages/curl:latest
+  script:
+    - |
+      for module in terraform-ecs-restart-lambda; do
+        curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+             --upload-file dist/terraform-${TERRAFORM_MODULE_SYSTEM}-${module}-${TERRAFORM_MODULE_VERSION}.tgz \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/terraform/modules/${module}/${TERRAFORM_MODULE_SYSTEM}/${TERRAFORM_MODULE_VERSION}/file"
+      done
+  only:
+    - tags
+
+upload_terraform_modules:
+  stage: upload
+  image: curlimages/curl:latest
+  variables:
+    TERRAFORM_MODULE_VERSION: ${CI_COMMIT_TAG}
+    MODULE_ARCHIVE_NAME: "terraform-modules-${TERRAFORM_MODULE_VERSION}.tgz"
+  script:
+    - tar -czf $MODULE_ARCHIVE_NAME modules/
+    - curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+        --upload-file $MODULE_ARCHIVE_NAME \
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/terraform-modules/${TERRAFORM_MODULE_VERSION}/${MODULE_ARCHIVE_NAME}"
+  only:
+    - tags
+
