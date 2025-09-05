@@ -1,0 +1,19 @@
+aws ecs run-task --cli-input-json file://run-task.json
+
+aws ecs run-task --cli-input-json file://config/run-task.json
+
+
+
+aws ecs run-task \
+  --cli-input-json file://config/run-task.json \
+  --overrides file://config/overrides.json
+
+project-root/
+├─ config/
+│  ├─ run-task.json
+│  └─ overrides.json   # optional
+└─ ...
+
+aws ecs run-task \
+  --cli-input-json file://config/run-task.json \
+  --overrides file://config/overrides.json

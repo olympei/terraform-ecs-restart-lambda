@@ -1,0 +1,24 @@
+{
+  "cluster": "my-ecs-cluster",
+  "launchType": "FARGATE",
+  "taskDefinition": "s3-copy-task",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": ["subnet-aaa", "subnet-bbb"],
+      "securityGroups": ["sg-task"],
+      "assignPublicIp": "DISABLED"
+    }
+  },
+  "overrides": {
+    "containerOverrides": [
+      {
+        "name": "s3-copy",
+        "environment": [
+          { "name": "S3_SOURCE", "value": "s3://my-bucket/my/prefix/" },
+          { "name": "DEST_DIR",  "value": "/mnt/efs/target" },
+          { "name": "SYNC",      "value": "false" }
+        ]
+      }
+    ]
+  }
+}
