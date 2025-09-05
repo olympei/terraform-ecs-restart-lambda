@@ -1,0 +1,12 @@
+{
+  "containerOverrides": [
+    {
+      "name": "efs-cleaner",
+      "environment": [
+        { "name": "EFS_DIR", "value": "/mnt/efs/target" },
+        { "name": "DRY_RUN", "value": "false" },
+        { "name": "EXCLUDE_GLOBS", "value": "" }
+      ]
+    }
+  ]
+}

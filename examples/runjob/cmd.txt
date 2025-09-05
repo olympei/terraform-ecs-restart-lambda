@@ -17,3 +17,8 @@ project-root/
 aws ecs run-task \
   --cli-input-json file://config/run-task.json \
   --overrides file://config/overrides.json
+
+
+aws ecs run-task \
+  --cli-input-json file://config/run-task.json \
+  --overrides file://config/overrides.json
